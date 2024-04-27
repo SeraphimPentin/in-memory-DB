@@ -1,0 +1,25 @@
+version: '3.9'
+
+services:
+  redis:
+    image: redis
+    ports:
+      - "6379:6379"
+
+  spring-app:
+    build: .
+    ports:
+      - "8080:8080"
+    environment:
+      - REDIS_NAME=in-memory-DB
+      - REDIS_HOST=redis
+      - REDIS_PORT=6379
+      - REDIS_DATABASE=0
+    depends_on:
+      - redis
+
+  in-memory-DB-app:
+    depends_on:
+      - spring-app
+    build:
+      dockerfile: Dockerfile
