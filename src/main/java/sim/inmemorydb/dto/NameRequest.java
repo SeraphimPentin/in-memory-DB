@@ -1,17 +1,18 @@
 package sim.inmemorydb.dto;
 
 import lombok.AllArgsConstructor;
-import lombok.Builder;
-import lombok.Data;
 import lombok.NoArgsConstructor;
 
-@Data
-@Builder
 @AllArgsConstructor
 @NoArgsConstructor
-public class RecordDTO {
+public class NameRequest {
 
-    private Long account;
     private String name;
-    private Double value;
+    public String getName() {
+        return name;
+    }
+
+    public void setName(String name) {
+        this.name = name;
+    }
 }

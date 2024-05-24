@@ -1,75 +1,110 @@
 package sim.inmemorydb.repository;
 
-
-import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.data.redis.core.HashOperations;
 import org.springframework.data.redis.core.RedisTemplate;
 import org.springframework.stereotype.Repository;
+import sim.inmemorydb.dto.RecordRequest;
+import sim.inmemorydb.exception.RecordsNotFoundException;
 import sim.inmemorydb.model.Records;
 
-import java.util.ArrayList;
-import java.util.HashSet;
-import java.util.List;
-import java.util.Set;
+import java.util.*;
 
 
 @Repository
-public class RecordRepository { // extends CrudRepository<Records, Long> {
+public class RecordRepository {
 
-//    Optional<Records> findRecordsByAccount(Long account);
-//    Optional<Records> findRecordsByValue(Double value);
-//    Optional<Records> findRecordsByName(String name);
-
+    private final RedisTemplate<String, Object> redisTemplate;
+    private final HashOperations hashOperations;
     public static final String HASH_KEY_NAME = "RECORD-ITEM";
 
     public static final String ACCOUNT_KEY_PREFIX = "account:";
     public static final String NAME_KEY_PREFIX = "name:";
     public static final String VALUE_KEY_PREFIX = "value:";
-    @Autowired
-    private RedisTemplate redisTemplate;
+
+    public RecordRepository(RedisTemplate<String, Object> redisTemplate) {
+        this.redisTemplate = redisTemplate;
+        hashOperations = redisTemplate.opsForHash();
+    }
 
 
     public Records save(Records record) {
-        redisTemplate.opsForValue().set(getKeyForAccount(record.getAccount()), record.getAccount());
-        redisTemplate.opsForValue().set(getKeyForName(record.getName()), record.getName());
-        redisTemplate.opsForValue().set(getKeyForValue(record.getValue()), record.getValue());
+        String key = getKeyForAccount(record.getAccount());
+        hashOperations.put(HASH_KEY_NAME, key, record);
         return record;
     }
 
-
-    public Records findByAccount(Long account) {
-        String key = getKeyForAccount(account);
-        return (Records) redisTemplate.opsForValue().get(key);
-    }
-
-    public Records findByName(String name) {
-        String key = getKeyForName(name);
-        return (Records) redisTemplate.opsForValue().get(key);
-    }
-
-    public Records findByValue(Double value) {
-        String key = getKeyForValue(value);
-        return (Records) redisTemplate.opsForValue().get(key);
-    }
-
     public List<Records> findAll() {
-        Set<String> keys = redisTemplate.keys("*");
         List<Records> allRecords = new ArrayList<>();
-        Set<String> processedKeys = new HashSet<>(); // Храним обработанные ключи, чтобы избежать дублирования
-        for (String key : keys) {
-            if (!processedKeys.contains(key)) { // Проверяем, не был ли ключ уже обработан
-                Records record = (Records) redisTemplate.opsForValue().get(key);
-                allRecords.add(record);
-                processedKeys.add(key); // Добавляем обработанный ключ в множество
-            }
+        Map<Object, Object> recordsMap = hashOperations.entries(HASH_KEY_NAME);
+        for (Map.Entry<Object, Object> entry : recordsMap.entrySet()) {
+            allRecords.add((Records) entry.getValue());
         }
         return allRecords;
     }
 
-    public void delete(Records record) {
-        redisTemplate.delete(getKeyForAccount(record.getAccount()));
-        redisTemplate.delete(getKeyForName(record.getName()));
-        redisTemplate.delete(getKeyForValue(record.getValue()));
+    public void delete(RecordRequest request) {
+        String key = getKeyForAccount(request.getAccount());
+        hashOperations.delete(HASH_KEY_NAME, key);
+    }
+
+    public List<Records> findByAccount(Long account) {
+        if (account == null) {
+            throw new IllegalArgumentException("Account parameter is required");
+        }
+        List<Records> matchingRecords = new ArrayList<>();
+        List<Object> records = redisTemplate.opsForHash().values(HASH_KEY_NAME);
+        for (Object record : records) {
+            if (record instanceof Records) {
+                Records currentRecord = (Records) record;
+                if (currentRecord.getAccount().equals(account)) {
+                    matchingRecords.add(currentRecord);
+                }
+            }
+        }
+        if (matchingRecords.isEmpty()) {
+            throw new RecordsNotFoundException("Record not found");
+        }
+        return matchingRecords;
+    }
+
+    public List<Records> findByName(String name) {
+        if (name == null) {
+            throw new IllegalArgumentException("Name parameter is required");
+        }
+        List<Records> matchingRecords = new ArrayList<>();
+        List<Object> records = redisTemplate.opsForHash().values(HASH_KEY_NAME);
+        for (Object record : records) {
+            if (record instanceof Records) {
+                Records currentRecord = (Records) record;
+                if (currentRecord.getName().equals(name)) {
+                    matchingRecords.add(currentRecord);
+                }
+            }
+        }
+        if (matchingRecords.isEmpty()) {
+            throw new RecordsNotFoundException("Record not found");
+        }
+        return matchingRecords;
+    }
+
+    public List<Records> findByValue(Double value) {
+        if (value == null) {
+            throw new IllegalArgumentException("Value parameter is required");
+        }
+        List<Records> matchingRecords = new ArrayList<>();
+        List<Object> records = redisTemplate.opsForHash().values(HASH_KEY_NAME);
+        for (Object record : records) {
+            if (record instanceof Records) {
+                Records currentRecord = (Records) record;
+                if (currentRecord.getValue().equals(value)) {
+                    matchingRecords.add(currentRecord);
+                }
+            }
+        }
+        if (matchingRecords.isEmpty()) {
+            throw new RecordsNotFoundException("Record not found");
+        }
+        return matchingRecords;
     }
 
     private String getKeyForAccount(Long account) {
@@ -84,7 +119,7 @@ public class RecordRepository { // extends CrudRepository<Records, Long> {
         return VALUE_KEY_PREFIX + value;
     }
 
-    private String getHashKeyName(String key){
+    private String getHashKeyName(String key) {
         return HASH_KEY_NAME;
     }
 }
