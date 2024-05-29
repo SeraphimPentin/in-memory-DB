@@ -4,10 +4,7 @@ package sim.inmemorydb.controller;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
-import sim.inmemorydb.dto.AccountRequest;
-import sim.inmemorydb.dto.NameRequest;
-import sim.inmemorydb.dto.RecordRequest;
-import sim.inmemorydb.dto.ValueRequest;
+import sim.inmemorydb.dto.*;
 import sim.inmemorydb.model.Records;
 import sim.inmemorydb.repository.RecordRepository;
 
@@ -52,5 +49,10 @@ public class RecordController {
     public ResponseEntity<String> delete(@RequestBody RecordRequest request) {
         repository.delete(request);
         return ResponseEntity.ok("Record successfully deleted.");
+    }
+
+    @PutMapping("update")
+    public ResponseEntity<Records> update(@RequestBody RecordUpdateRequest request) {
+        return ResponseEntity.ok(repository.update(request));
     }
 }

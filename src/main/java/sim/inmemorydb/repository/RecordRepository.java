@@ -4,6 +4,7 @@ import org.springframework.data.redis.core.HashOperations;
 import org.springframework.data.redis.core.RedisTemplate;
 import org.springframework.stereotype.Repository;
 import sim.inmemorydb.dto.RecordRequest;
+import sim.inmemorydb.dto.RecordUpdateRequest;
 import sim.inmemorydb.exception.RecordsNotFoundException;
 import sim.inmemorydb.model.Records;
 
@@ -44,7 +45,28 @@ public class RecordRepository {
 
     public void delete(RecordRequest request) {
         String key = getKeyForAccount(request.getAccount());
-        hashOperations.delete(HASH_KEY_NAME, key);
+        Records record = (Records) redisTemplate.opsForHash().get(HASH_KEY_NAME, key);
+        if (record != null && record.getName().equals(request.getName()) && record.getValue().equals(request.getValue())) {
+            redisTemplate.opsForHash().delete(HASH_KEY_NAME, key);
+        } else {
+            throw new RecordsNotFoundException("Record not found or does not match the provided name and value");
+        }
+    }
+
+    public Records update(RecordUpdateRequest request) {
+        Long account = request.getAccount();
+        String key = getKeyForAccount(account);
+        Records existingRecord = (Records) hashOperations.get(HASH_KEY_NAME, key);
+
+        if (existingRecord == null) {
+            throw new RecordsNotFoundException("Record not found for account: " + account);
+        }
+
+        existingRecord.setName(request.getNewName());
+        existingRecord.setValue(request.getNewValue());
+        hashOperations.put(HASH_KEY_NAME, key, existingRecord);
+
+        return existingRecord;
     }
 
     public List<Records> findByAccount(Long account) {

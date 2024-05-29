@@ -29,4 +29,12 @@ public class Records implements Serializable {
     public Double getValue() {
         return value;
     }
+
+    public void setName(String name) {
+        this.name = name;
+    }
+
+    public void setValue(Double value) {
+        this.value = value;
+    }
 }
